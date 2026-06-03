@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Partner Reseller Dashboard",
+  "schemaVersion": 1,
+  "description": "Live HubSpot dashboard showing partner deal performance ($ and # by partner) and the Partnerships pipeline funnel by stage. Refreshes from HubSpot on open.",
+  "mcpTools": [
+    "mcp__84674bb7-a819-44fe-8af4-663f5ca5a764__search_crm_objects"
+  ],
+  "mcpServerNames": [
+    "HubSpot"
+  ]
+}
+</script>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Partner & Reseller Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f6fa; color: #1a1a2e; font-size: 14px; }
+
+  .header { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+  .header .subtitle { font-size: 12px; color: #64748b; margin-top: 2px; }
+  .refresh-btn { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; color: #475569; display: flex; align-items: center; gap: 6px; }
+  .refresh-btn:hover { background: #e2e8f0; }
+
+  .tabs { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 0 24px; display: flex; gap: 0; }
+  .tab { padding: 12px 20px; cursor: pointer; font-size: 13px; font-weight: 500; color: #64748b; border-bottom: 2px solid transparent; transition: all 0.15s; }
+  .tab.active { color: #ff5c35; border-bottom-color: #ff5c35; }
+  .tab:hover:not(.active) { color: #334155; }
+
+  .content { padding: 24px; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .kpi { background: #fff; border-radius: 10px; padding: 16px 20px; border: 1px solid #e2e8f0; }
+  .kpi .label { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+  .kpi .value { font-size: 26px; font-weight: 700; color: #1a1a2e; margin-top: 4px; }
+  .kpi .sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .kpi.highlight .value { color: #ff5c35; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 10px; border: 1px solid #e2e8f0; padding: 20px; }
+  .card h3 { font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 16px; }
+
+  .partner-table { width: 100%; border-collapse: collapse; }
+  .partner-table th { text-align: left; font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+  .partner-table td { padding: 10px 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: middle; }
+  .partner-table tr:last-child td { border-bottom: none; }
+  .partner-table tr:hover td { background: #f8fafc; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-won { background: #dcfce7; color: #166534; }
+  .badge-active { background: #dbeafe; color: #1e40af; }
+  .badge-lost { background: #fee2e2; color: #991b1b; }
+
+  .bar-container { display: flex; align-items: center; gap: 8px; }
+  .bar-bg { flex: 1; height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; background: #ff5c35; }
+
+  .pipeline-funnel { display: flex; flex-direction: column; gap: 8px; }
+  .funnel-row { display: flex; align-items: center; gap: 12px; }
+  .funnel-label { width: 120px; font-size: 12px; color: #475569; text-align: right; flex-shrink: 0; }
+  .funnel-bar-wrap { flex: 1; height: 28px; background: #f1f5f9; border-radius: 4px; overflow: hidden; position: relative; display: flex; align-items: center; }
+  .funnel-bar { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 10px; font-size: 11px; font-weight: 600; color: #fff; transition: width 0.5s ease; white-space: nowrap; }
+  .funnel-count { width: 60px; font-size: 12px; color: #64748b; flex-shrink: 0; }
+  .funnel-amount { width: 90px; font-size: 12px; font-weight: 600; color: #334155; text-align: right; flex-shrink: 0; }
+
+  .deal-list { display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
+  .deal-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
+  .deal-item .name { flex: 1; font-size: 13px; font-weight: 500; color: #1a1a2e; }
+  .deal-item .partner { font-size: 11px; color: #64748b; }
+  .deal-item .amount { font-size: 13px; font-weight: 600; color: #1a1a2e; }
+  .deal-item .stage-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  .loading { display: flex; align-items: center; justify-content: center; padding: 60px; color: #94a3b8; font-size: 14px; gap: 10px; }
+  .spinner { width: 20px; height: 20px; border: 2px solid #e2e8f0; border-top-color: #ff5c35; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error { color: #ef4444; padding: 20px; text-align: center; }
+
+  .section-full { margin-bottom: 24px; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .chart-wrap { height: 220px; position: relative; }
+
+  .stage-pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>🤝 Partner &amp; Reseller Dashboard</h1>
+    <div class="subtitle" id="last-updated">Loading data from HubSpot…</div>
+  </div>
+  <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('partners')">Partner Performance</div>
+  <div class="tab" onclick="switchTab('reseller')">Reseller Pipeline</div>
+  <div class="tab" onclick="switchTab('pipeline')">Partnerships Pipeline</div>
+</div>
+
+<div class="content">
+  <div id="tab-partners" class="tab-panel active">
+    <div id="partners-content"><div class="loading"><div class="spinner"></div> Loading partner deals…</div></div>
+  </div>
+  <div id="tab-reseller" class="tab-panel">
+    <div id="reseller-content"><div class="loading"><div class="spinner"></div> Loading reseller deals…</div></div>
+  </div>
+  <div id="tab-pipeline" class="tab-panel">
+    <div id="pipeline-content"><div class="loading"><div class="spinner"></div> Loading pipeline…</div></div>
+  </div>
+</div>
+
+<script>
+const STAGE_LABELS = {
+  appointmentscheduled: 'Qualification',
+  decisionmakerboughtin: 'Discovery',
+  '1518127339': 'Evaluation',
+  contractsent: 'Negotiation',
+  '1518127340': 'Contract Sent',
+  closedwon: 'Closed Won',
+  closedlost: 'Closed Lost',
+  // Partnerships pipeline
+  '3081602246': 'Qualification',
+  '3121913079': 'Discovery',
+  '3081602247': 'Evaluation',
+  '3081602248': 'Negotiation',
+  '4402941140': 'Contract Sent',
+  '3081602251': 'Closed Won',
+  '3081602252': 'Closed Lost',
+  // Renewals pipeline
+  '5459581169': 'Upcoming Renewal',
+  '5459581170': 'Engaged',
+  '5459581171': 'Negotiating Terms',
+  '5459581172': 'Contract Sent',
+  '5459581173': 'Closed Won',
+  '5459581174': 'Closed Lost - Churn',
+};
+
+// TA mapping by deal name keyword → { ta, tsd }
+const TA_MAP = [
+  { match: "st. john", ta: "Sugar Hill", tsd: "Avant" },
+  { match: "monarch health", ta: "Opkalla", tsd: "Avant" },
+  { match: "ascend learning", ta: "Bear IT", tsd: "Avant" },
+  { match: "triforza", ta: "Upstack", tsd: "Avant" },
+  { match: "balance health", ta: "Bridgepointe", tsd: "Avant" },
+  { match: "venners", ta: "Excelien", tsd: "Avant" },
+  { match: "sedexis", ta: "Sedexis", tsd: "Avant" },
+  { match: "pluto9", ta: "Sedexis", tsd: "Avant" },
+  { match: "express wash", ta: "Network Solutions International", tsd: "Avant" },
+  { match: "dex imaging", ta: "Tecnoto", tsd: "Tecnoto" },
+  { match: "aptiva", ta: "Upstack", tsd: "Avant" },
+  { match: "roi cx", ta: "Bridgepointe", tsd: "Avant" },
+  { match: "ethos group", ta: "LAM Technology", tsd: "Avant" },
+  { match: "pye-barker", ta: "LAM Technology", tsd: "Avant" },
+  { match: "72sold", ta: "WiredIQ", tsd: "Avant" },
+  { match: "optical express", ta: "Softcat", tsd: "Avant" },
+  { match: "medical answering", ta: "Upstack", tsd: "Avant" },
+  { match: "orthosouth", ta: "Upstack", tsd: "Avant" },
+];
+
+function getTAForDeal(dealname) {
+  if (!dealname) return null;
+  const lower = dealname.toLowerCase();
+  for (const entry of TA_MAP) {
+    if (lower.includes(entry.match.toLowerCase())) return entry;
+  }
+  return null;
+}
+
+const STAGE_ORDER = ['Qualification','Discovery','Evaluation','Negotiation','Contract Sent','Closed Won','Closed Lost'];
+
+const STAGE_COLORS = {
+  'Qualification': '#93c5fd',
+  'Discovery': '#6ee7b7',
+  'Evaluation': '#fcd34d',
+  'Negotiation': '#fb923c',
+  'Contract Sent': '#c084fc',
+  'Closed Won': '#4ade80',
+  'Closed Lost': '#f87171',
+};
+
+const PARTNER_COLORS = ['#ff5c35','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f43f5e','#14b8a6'];
+
+function fmt(n) {
+  if (!n) return '—';
+  if (n >= 1000000) return '$' + (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000) return '$' + (n/1000).toFixed(0) + 'K';
+  return '$' + n.toFixed(0);
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['partners','reseller','pipeline'][i] === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+let partnerDeals = [];
+let resellerDeals = [];
+let pipelineDeals = [];
+
+async function loadAll() {
+  document.getElementById('last-updated').textContent = 'Refreshing…';
+  try {
+    const [p1, p2, p3] = await Promise.all([
+      window.cowork.callMcpTool('mcp__84674bb7-a819-44fe-8af4-663f5ca5a764__search_crm_objects', {
+        objectType: 'deals',
+        properties: ['dealname','amount','dealstage','pipeline','closedate','deal_currency_code','dealtype','partner_name','deal_source'],
+        filterGroups: [{ filters: [{ propertyName: 'deal_source', operator: 'EQ', value: 'Partner' }] }],
+        limit: 200,
+        chatInsights: { userIntent: 'Partner dashboard', satisfaction: 'SATISFIED' }
+      }),
+      window.cowork.callMcpTool('mcp__84674bb7-a819-44fe-8af4-663f5ca5a764__search_crm_objects', {
+        objectType: 'deals',
+        properties: ['dealname','amount','dealstage','pipeline','closedate','deal_currency_code','dealtype','partner_name','deal_source','deal_motion'],
+        filterGroups: [{ filters: [{ propertyName: 'deal_motion', operator: 'EQ', value: 'Reseller' }] }],
+        limit: 200,
+        chatInsights: { userIntent: 'Reseller pipeline dashboard', satisfaction: 'SATISFIED' }
+      }),
+      window.cowork.callMcpTool('mcp__84674bb7-a819-44fe-8af4-663f5ca5a764__search_crm_objects', {
+        objectType: 'deals',
+        properties: ['dealname','amount','dealstage','pipeline','closedate','deal_currency_code','dealtype','deal_source'],
+        filterGroups: [{ filters: [{ propertyName: 'pipeline', operator: 'EQ', value: '2258872511' }] }],
+        limit: 200,
+        chatInsights: { userIntent: 'Partnerships pipeline dashboard', satisfaction: 'SATISFIED' }
+      })
+    ]);
+
+    partnerDeals = p1.results || [];
+    resellerDeals = p2.results || [];
+    pipelineDeals = p3.results || [];
+
+    renderPartners();
+    renderReseller();
+    renderPipeline();
+    document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    document.getElementById('last-updated').textContent = 'Error loading data';
+    document.getElementById('partners-content').innerHTML = '<div class="error">⚠️ ' + e.message + '</div>';
+    document.getElementById('reseller-content').innerHTML = '<div class="error">⚠️ ' + e.message + '</div>';
+    document.getElementById('pipeline-content').innerHTML = '<div class="error">⚠️ ' + e.message + '</div>';
+  }
+}
+
+function renderReseller() {
+  const deals = resellerDeals;
+
+  const RENEWAL_STAGES = { '5459581169': 'Upcoming Renewal', '5459581170': 'Engaged', '5459581171': 'Negotiating Terms', '5459581172': 'Contract Sent', '5459581173': 'Closed Won', '5459581174': 'Closed Lost - Churn' };
+  const allStageLabels = Object.assign({}, STAGE_LABELS, RENEWAL_STAGES);
+
+  const activeDeals = deals.filter(d => {
+    const s = allStageLabels[d.properties.dealstage] || '';
+    return !['Closed Won','Closed Lost','Closed Lost - Churn'].includes(s);
+  });
+  const wonDeals = deals.filter(d => ['Closed Won', '5459581173'].includes(d.properties.dealstage) || allStageLabels[d.properties.dealstage] === 'Closed Won');
+  const totalWon = wonDeals.reduce((s,d) => s + (parseFloat(d.properties.amount)||0), 0);
+  const activePipeline = activeDeals.reduce((s,d) => s + (parseFloat(d.properties.amount)||0), 0);
+
+  // By reseller name (partner_name or deal name)
+  const byReseller = {};
+  deals.forEach(d => {
+    const p = d.properties;
+    const name = p.partner_name || (p.dealname || '').split(' ')[0] || 'Direct';
+    if (!byReseller[name]) byReseller[name] = { name, total: 0, pipeline: 0, won: 0, lost: 0, active: 0, deals: [] };
+    const amt = parseFloat(p.amount) || 0;
+    const stage = allStageLabels[p.dealstage] || p.dealstage;
+    byReseller[name].total += amt;
+    byReseller[name].deals.push(d);
+    if (['Closed Won'].includes(stage) || p.dealstage === '5459581173') { byReseller[name].won++; }
+    else if (['Closed Lost','Closed Lost - Churn'].includes(stage)) { byReseller[name].lost++; }
+    else { byReseller[name].active++; byReseller[name].pipeline += amt; }
+  });
+
+  const resellers = Object.values(byReseller).sort((a,b) => b.total - a.total).slice(0, 15);
+  const maxTotal = Math.max(...resellers.map(r => r.total), 1);
+
+  // Stage breakdown
+  const stageCounts = {};
+  const stageAmounts = {};
+  deals.forEach(d => {
+    const s = allStageLabels[d.properties.dealstage] || 'Unknown';
+    stageCounts[s] = (stageCounts[s]||0) + 1;
+    stageAmounts[s] = (stageAmounts[s]||0) + (parseFloat(d.properties.amount)||0);
+  });
+
+  // Active open deals sorted by amount
+  const openSorted = activeDeals.sort((a,b) => (parseFloat(b.properties.amount)||0) - (parseFloat(a.properties.amount)||0));
+
+  let html = `
+  <div class="kpi-row">
+    <div class="kpi highlight"><div class="label">Active Pipeline</div><div class="value">${fmt(activePipeline)}</div><div class="sub">${activeDeals.length} open deals</div></div>
+    <div class="kpi"><div class="label">Closed Won (All Time)</div><div class="value">${fmt(totalWon)}</div><div class="sub">${wonDeals.length} deals</div></div>
+    <div class="kpi"><div class="label">Total Resellers</div><div class="value">${deals.length}</div><div class="sub">across ${Object.keys(byReseller).length} resellers</div></div>
+    <div class="kpi"><div class="label">Win Rate</div><div class="value">${deals.length ? Math.round(wonDeals.length/deals.length*100) : 0}%</div><div class="sub">by deal count</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>Top Resellers by Total Value</h3>
+      <div class="chart-wrap"><canvas id="resellerChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Deals by Stage</h3>
+      <div class="chart-wrap"><canvas id="resellerStageChart"></canvas></div>
+    </div>
+  </div>
+  <div class="card section-full" style="margin-bottom:16px">
+    <h3>Active Reseller Deals</h3>
+    <div class="deal-list">`;
+
+  if (openSorted.length === 0) {
+    html += '<div style="padding:20px;text-align:center;color:#94a3b8">No active deals</div>';
+  }
+  openSorted.forEach(d => {
+    const p = d.properties;
+    const allLabels = Object.assign({}, STAGE_LABELS, RENEWAL_STAGES);
+    const stage = allLabels[p.dealstage] || p.dealstage;
+    const color = STAGE_COLORS[stage] || '#fb923c';
+    html += `<div class="deal-item">
+      <div class="stage-dot" style="background:${color}"></div>
+      <div class="name">${p.dealname || '—'}</div>
+      <div class="partner" style="min-width:80px">${p.partner_name || ''}</div>
+      <span class="badge" style="background:${color}22;color:#334155">${stage}</span>
+      <div class="amount">${p.amount && parseFloat(p.amount)>0 ? fmt(parseFloat(p.amount)) : ''}</div>
+    </div>`;
+  });
+
+  html += `</div></div>
+  <div class="card section-full">
+    <h3>All Resellers (Won + Pipeline)</h3>
+    <table class="partner-table">
+      <thead><tr>
+        <th>Reseller</th><th>Total Value</th><th>Active Pipeline</th><th>Deals</th><th>Won</th><th>Lost/Churn</th><th>Share</th>
+      </tr></thead><tbody>`;
+
+  resellers.forEach((r, i) => {
+    const pct = maxTotal > 0 ? (r.total / maxTotal * 100) : 0;
+    const totalAll = resellers.reduce((s,x) => s + x.total, 0);
+    html += `<tr>
+      <td><strong>${r.name}</strong></td>
+      <td>${fmt(r.total)}</td>
+      <td>${fmt(r.pipeline)}</td>
+      <td>${r.deals.length}</td>
+      <td><span class="badge badge-won">${r.won}</span></td>
+      <td><span class="badge badge-lost">${r.lost}</span></td>
+      <td><div class="bar-container"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${PARTNER_COLORS[i%PARTNER_COLORS.length]}"></div></div><span style="font-size:11px;color:#94a3b8">${totalAll>0?Math.round(r.total/totalAll*100)+'%':'—'}</span></div></td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+  document.getElementById('reseller-content').innerHTML = html;
+
+  // Bar chart
+  const ctx1 = document.getElementById('resellerChart').getContext('2d');
+  new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: resellers.map(r => r.name.length > 14 ? r.name.slice(0,14)+'…' : r.name),
+      datasets: [{
+        data: resellers.map(r => r.total),
+        backgroundColor: resellers.map((_,i) => PARTNER_COLORS[i%PARTNER_COLORS.length]),
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.raw) } } },
+      scales: { y: { ticks: { callback: v => fmt(v), font: { size: 10 } }, grid: { color: '#f1f5f9' } }, x: { ticks: { font: { size: 10 } } } }
+    }
+  });
+
+  // Donut stage chart
+  const ctx2 = document.getElementById('resellerStageChart').getContext('2d');
+  const stageEntries = Object.entries(stageCounts).sort((a,b) => {
+    const allStages = [...STAGE_ORDER, 'Upcoming Renewal','Engaged','Negotiating Terms'];
+    return allStages.indexOf(a[0]) - allStages.indexOf(b[0]);
+  });
+  new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+      labels: stageEntries.map(e => e[0]),
+      datasets: [{ data: stageEntries.map(e => e[1]), backgroundColor: stageEntries.map(e => STAGE_COLORS[e[0]] || '#94a3b8'), borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { font: { size: 11 }, padding: 8, boxWidth: 12 } } }
+    }
+  });
+}
+
+function renderPartners() {
+  const deals = partnerDeals;
+
+  // Aggregate by partner
+  const byPartner = {};
+  deals.forEach(d => {
+    const p = d.properties;
+    const name = p.partner_name || 'Unassigned';
+    const amt = parseFloat(p.amount) || 0;
+    const stage = STAGE_LABELS[p.dealstage] || p.dealstage;
+    if (!byPartner[name]) byPartner[name] = { name, total: 0, pipeline: 0, won: 0, lost: 0, active: 0, deals: [] };
+    byPartner[name].total += amt;
+    byPartner[name].deals.push(d);
+    if (stage === 'Closed Won') { byPartner[name].won++; }
+    else if (stage === 'Closed Lost') { byPartner[name].lost++; }
+    else { byPartner[name].active++; byPartner[name].pipeline += amt; }
+  });
+
+  const partners = Object.values(byPartner).sort((a,b) => b.total - a.total);
+  const totalPipeline = partners.reduce((s,p) => s + p.pipeline, 0);
+  const totalWon = partners.reduce((s,p) => {
+    return s + p.deals.filter(d => STAGE_LABELS[d.properties.dealstage] === 'Closed Won').reduce((ss,d) => ss + (parseFloat(d.properties.amount)||0), 0);
+  }, 0);
+  const totalDeals = deals.length;
+  const wonCount = deals.filter(d => STAGE_LABELS[d.properties.dealstage] === 'Closed Won').length;
+  const maxTotal = Math.max(...partners.map(p => p.total));
+
+  // KPIs
+  const activeDeals = deals.filter(d => !['Closed Won','Closed Lost'].includes(STAGE_LABELS[d.properties.dealstage] || ''));
+  const activePipeline = activeDeals.reduce((s,d) => s + (parseFloat(d.properties.amount)||0), 0);
+
+  let html = `
+  <div class="kpi-row">
+    <div class="kpi highlight"><div class="label">Active Pipeline</div><div class="value">${fmt(activePipeline)}</div><div class="sub">${activeDeals.length} open deals</div></div>
+    <div class="kpi"><div class="label">Closed Won</div><div class="value">${fmt(totalWon)}</div><div class="sub">${wonCount} deals won</div></div>
+    <div class="kpi"><div class="label">Total Deals</div><div class="value">${totalDeals}</div><div class="sub">across ${partners.length} partners</div></div>
+    <div class="kpi"><div class="label">Win Rate</div><div class="value">${totalDeals ? Math.round(wonCount/totalDeals*100) : 0}%</div><div class="sub">by deal count</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>Pipeline Value by Partner</h3>
+      <div class="chart-wrap"><canvas id="partnerChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Deals by Stage</h3>
+      <div class="chart-wrap"><canvas id="stageChart"></canvas></div>
+    </div>
+  </div>
+  <div class="card section-full">
+    <h3>Partner Breakdown</h3>
+    <table class="partner-table">
+      <thead><tr>
+        <th>Partner</th>
+        <th>Total Value</th>
+        <th>Active Pipeline</th>
+        <th>Deals</th>
+        <th>Won</th>
+        <th>Lost</th>
+        <th>Share</th>
+      </tr></thead>
+      <tbody>`;
+
+  partners.forEach((p, i) => {
+    const wonVal = p.deals.filter(d => STAGE_LABELS[d.properties.dealstage] === 'Closed Won').reduce((s,d) => s + (parseFloat(d.properties.amount)||0), 0);
+    const pct = maxTotal > 0 ? (p.total / maxTotal * 100) : 0;
+    html += `<tr>
+      <td><strong>${p.name}</strong></td>
+      <td>${fmt(p.total)}</td>
+      <td>${fmt(p.pipeline)}</td>
+      <td>${p.deals.length}</td>
+      <td><span class="badge badge-won">${p.won}</span></td>
+      <td><span class="badge badge-lost">${p.lost}</span></td>
+      <td><div class="bar-container"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${PARTNER_COLORS[i%PARTNER_COLORS.length]}"></div></div><span style="font-size:11px;color:#94a3b8">${p.total>0?Math.round(p.total/Math.max(partners.reduce((s,x)=>s+x.total,0),1)*100)+'%':'—'}</span></div></td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+
+  // Avant TA breakdown
+  const avantDeals = deals.filter(d => d.properties.partner_name === 'Avant');
+  const byTA = {};
+  avantDeals.forEach(d => {
+    const taInfo = getTAForDeal(d.properties.dealname);
+    const taName = taInfo ? taInfo.ta : 'Unknown TA';
+    const amt = parseFloat(d.properties.amount) || 0;
+    const stage = STAGE_LABELS[d.properties.dealstage] || d.properties.dealstage;
+    if (!byTA[taName]) byTA[taName] = { total: 0, pipeline: 0, won: 0, lost: 0, active: 0, deals: [] };
+    byTA[taName].total += amt;
+    byTA[taName].deals.push(d);
+    if (stage === 'Closed Won') byTA[taName].won++;
+    else if (stage === 'Closed Lost') { byTA[taName].lost++; }
+    else { byTA[taName].active++; byTA[taName].pipeline += amt; }
+  });
+
+  const taList = Object.entries(byTA).sort((a,b) => b[1].total - a[1].total);
+  const maxTA = Math.max(...taList.map(e => e[1].total), 1);
+
+  html += `<div class="card section-full" style="margin-top:16px">
+    <h3>🔀 Avant TAs — Deal Breakdown</h3>
+    <table class="partner-table" style="margin-top:12px">
+      <thead><tr>
+        <th>TA (Technology Advisor)</th><th>Total Value</th><th>Active Pipeline</th><th>Deals</th><th>Won</th><th>Lost</th><th>Share</th>
+      </tr></thead><tbody>`;
+
+  taList.forEach(([name, t], i) => {
+    const pct = maxTA > 0 ? (t.total / maxTA * 100) : 0;
+    const totalAll = taList.reduce((s,[,x]) => s + x.total, 0);
+    html += `<tr>
+      <td><strong>${name}</strong></td>
+      <td>${fmt(t.total)}</td>
+      <td>${fmt(t.pipeline)}</td>
+      <td>${t.deals.length}</td>
+      <td><span class="badge badge-won">${t.won}</span></td>
+      <td><span class="badge badge-lost">${t.lost}</span></td>
+      <td><div class="bar-container"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${PARTNER_COLORS[i%PARTNER_COLORS.length]}"></div></div><span style="font-size:11px;color:#94a3b8">${totalAll>0?Math.round(t.total/totalAll*100)+'%':'—'}</span></div></td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+  document.getElementById('partners-content').innerHTML = html;
+
+  // Chart: partner pipeline bar
+  const ctx1 = document.getElementById('partnerChart').getContext('2d');
+  new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: partners.map(p => p.name.length > 12 ? p.name.slice(0,12)+'…' : p.name),
+      datasets: [{
+        data: partners.map(p => p.pipeline),
+        backgroundColor: partners.map((_,i) => PARTNER_COLORS[i%PARTNER_COLORS.length]),
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.raw) } } },
+      scales: { y: { ticks: { callback: v => fmt(v), font: { size: 10 } }, grid: { color: '#f1f5f9' } }, x: { ticks: { font: { size: 10 } } } }
+    }
+  });
+
+  // Chart: stage donut
+  const stageCounts = {};
+  deals.forEach(d => {
+    const s = STAGE_LABELS[d.properties.dealstage] || 'Unknown';
+    stageCounts[s] = (stageCounts[s]||0) + 1;
+  });
+  const ctx2 = document.getElementById('stageChart').getContext('2d');
+  const stageEntries = Object.entries(stageCounts).sort((a,b) => STAGE_ORDER.indexOf(a[0]) - STAGE_ORDER.indexOf(b[0]));
+  new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+      labels: stageEntries.map(e => e[0]),
+      datasets: [{ data: stageEntries.map(e => e[1]), backgroundColor: stageEntries.map(e => STAGE_COLORS[e[0]] || '#cbd5e1'), borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { font: { size: 11 }, padding: 10, boxWidth: 12 } } }
+    }
+  });
+}
+
+function renderPipeline() {
+  const deals = pipelineDeals;
+
+  // Aggregate by stage
+  const byStage = {};
+  STAGE_ORDER.forEach(s => byStage[s] = { count: 0, amount: 0, deals: [] });
+
+  deals.forEach(d => {
+    const p = d.properties;
+    const stage = STAGE_LABELS[p.dealstage] || 'Unknown';
+    if (!byStage[stage]) byStage[stage] = { count: 0, amount: 0, deals: [] };
+    byStage[stage].count++;
+    byStage[stage].amount += parseFloat(p.amount) || 0;
+    byStage[stage].deals.push(d);
+  });
+
+  const totalDeals = deals.length;
+  const wonDeals = byStage['Closed Won'] || { count: 0, amount: 0 };
+  const activeDeals = deals.filter(d => !['Closed Won','Closed Lost'].includes(STAGE_LABELS[d.properties.dealstage] || ''));
+  const activePipeline = activeDeals.reduce((s,d) => s + (parseFloat(d.properties.amount)||0), 0);
+  const maxStageCount = Math.max(...Object.values(byStage).map(s => s.count));
+
+  // Active open deals
+  const openDeals = deals.filter(d => {
+    const stage = STAGE_LABELS[d.properties.dealstage] || '';
+    return !['Closed Won','Closed Lost'].includes(stage);
+  }).sort((a,b) => (parseFloat(b.properties.amount)||0) - (parseFloat(a.properties.amount)||0));
+
+  let html = `
+  <div class="kpi-row">
+    <div class="kpi highlight"><div class="label">Total Partners</div><div class="value">${totalDeals}</div><div class="sub">in partnerships pipeline</div></div>
+    <div class="kpi"><div class="label">Active</div><div class="value">${activeDeals.length}</div><div class="sub">in progress</div></div>
+    <div class="kpi"><div class="label">Active Pipeline</div><div class="value">${fmt(activePipeline)}</div><div class="sub">weighted value</div></div>
+    <div class="kpi"><div class="label">Closed Won</div><div class="value">${wonDeals.count}</div><div class="sub">${fmt(wonDeals.amount)}</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>Pipeline Funnel by Stage</h3>
+      <div class="pipeline-funnel" style="margin-top:8px;">`;
+
+  STAGE_ORDER.forEach(stage => {
+    const s = byStage[stage] || { count: 0, amount: 0 };
+    if (s.count === 0) return;
+    const pct = maxStageCount > 0 ? Math.max(s.count / maxStageCount * 100, 8) : 8;
+    html += `
+      <div class="funnel-row">
+        <div class="funnel-label">${stage}</div>
+        <div class="funnel-bar-wrap">
+          <div class="funnel-bar" style="width:${pct}%;background:${STAGE_COLORS[stage] || '#94a3b8'};color:${['Qualification','Contract Sent'].includes(stage)?'#1e293b':'#fff'}">
+            ${s.count > 0 ? s.count + ' deal' + (s.count>1?'s':'') : ''}
+          </div>
+        </div>
+        <div class="funnel-amount">${s.amount > 0 ? fmt(s.amount) : ''}</div>
+      </div>`;
+  });
+
+  html += `</div></div>
+  <div class="card">
+    <h3>Stage Distribution</h3>
+    <div class="chart-wrap"><canvas id="pipelineChart"></canvas></div>
+  </div>
+  </div>
+  <div class="card section-full">
+    <h3>Active Deals in Partnerships Pipeline</h3>
+    <div class="deal-list">`;
+
+  openDeals.slice(0, 30).forEach(d => {
+    const p = d.properties;
+    const stage = STAGE_LABELS[p.dealstage] || p.dealstage;
+    const color = STAGE_COLORS[stage] || '#94a3b8';
+    const src = p.deal_source || '';
+    html += `<div class="deal-item">
+      <div class="stage-dot" style="background:${color}"></div>
+      <div class="name">${p.dealname || '—'}</div>
+      <div class="partner" style="min-width:80px">${src}</div>
+      <span class="badge" style="background:${color}22;color:${color === '#4ade80' ? '#166534' : '#334155'}">${stage}</span>
+      <div class="amount">${p.amount && parseFloat(p.amount) > 0 ? fmt(parseFloat(p.amount)) : ''}</div>
+    </div>`;
+  });
+
+  html += `</div></div>`;
+  document.getElementById('pipeline-content').innerHTML = html;
+
+  // Donut chart
+  const ctx = document.getElementById('pipelineChart').getContext('2d');
+  const stageEntries = STAGE_ORDER.filter(s => byStage[s] && byStage[s].count > 0);
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: stageEntries,
+      datasets: [{ data: stageEntries.map(s => byStage[s].count), backgroundColor: stageEntries.map(s => STAGE_COLORS[s] || '#cbd5e1'), borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { font: { size: 11 }, padding: 8, boxWidth: 12 } } }
+    }
+  });
+}
+
+loadAll();
+</script>
+</body>
+</html>
