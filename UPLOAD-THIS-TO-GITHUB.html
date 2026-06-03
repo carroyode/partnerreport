@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Synthflow — Partner & Reseller Report</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+:root{--p:#5C21FA;--p2:#7C3AFF;--p3:#9F67FF;--dark:#0a0a0f;--mid:#334155;--muted:#64748b;--border:#ede9fe;--light:#f5f3ff;--white:#fff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fafaff;color:var(--dark);font-size:14px}
+
+/* HEADER */
+.hdr{background:#fff;border-bottom:1px solid var(--border);padding:32px 48px 28px;position:relative;overflow:hidden}
+.hdr::after{content:'';position:absolute;top:-60px;right:-80px;width:380px;height:380px;background-image:radial-gradient(circle,#c4b5fd 1.5px,transparent 1.5px);background-size:20px 20px;opacity:.4;pointer-events:none}
+.hdr-logo{font-size:20px;font-weight:900;color:var(--p);letter-spacing:-.5px;margin-bottom:10px}
+.hdr h1{font-size:26px;font-weight:700;color:var(--dark);margin-bottom:4px}
+.hdr-meta{font-size:12px;color:var(--muted)}
+.hdr-meta b{color:var(--p)}
+
+/* NAV */
+.nav{background:#fff;border-bottom:2px solid var(--border);padding:0 48px;display:flex;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(92,33,250,.06)}
+.nav a{display:block;padding:13px 18px;font-size:13px;font-weight:600;color:#94a3b8;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;transition:all .15s}
+.nav a:hover,.nav a.on{color:var(--p);border-bottom-color:var(--p)}
+
+/* SECTIONS */
+.sec{padding:36px 48px;display:none}
+.sec.on{display:block}
+.sec-title{font-size:17px;font-weight:700;margin-bottom:4px}
+.sec-sub{font-size:12px;color:var(--muted);margin-bottom:24px}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.kpi{background:#fff;border-radius:12px;padding:18px 20px;border:1px solid var(--border);cursor:pointer;transition:box-shadow .15s,transform .1s}
+.kpi:hover{box-shadow:0 4px 20px rgba(92,33,250,.12);transform:translateY(-1px)}
+.kpi.accent{background:linear-gradient(135deg,var(--p),var(--p2));border-color:transparent}
+.kpi .lbl{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em}
+.kpi.accent .lbl{color:rgba(255,255,255,.7)}
+.kpi .val{font-size:28px;font-weight:800;color:var(--dark);margin-top:5px;line-height:1}
+.kpi.accent .val{color:#fff}
+.kpi .sub{font-size:11px;color:var(--muted);margin-top:3px}
+.kpi.accent .sub{color:rgba(255,255,255,.75)}
+.kpi .drill{font-size:10px;color:var(--p);margin-top:6px;font-weight:600}
+.kpi.accent .drill{color:rgba(255,255,255,.9)}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.card{background:#fff;border-radius:12px;border:1px solid var(--border);padding:20px}
+.card h3{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:16px}
+.ch{height:220px;position:relative}
+
+/* PARTNER TABLE */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;padding:9px 12px;border-bottom:1px solid var(--border)}
+.tbl td{padding:10px 12px;border-bottom:1px solid #f5f3ff;font-size:13px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr.clickable{cursor:pointer}
+.tbl tr.clickable:hover td{background:#f5f3ff}
+.n{font-weight:600;font-variant-numeric:tabular-nums}
+
+/* BADGES */
+.b{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.bw{background:#dcfce7;color:#166534}
+.ba{background:#ede9fe;color:#5C21FA}
+.bl{background:#fee2e2;color:#991b1b}
+.br{background:#fef3c7;color:#92400e}
+.bs{background:#f1f5f9;color:#475569}
+
+/* BAR */
+.bar-r{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.bar-lbl{width:140px;font-size:12px;color:var(--mid);flex-shrink:0;text-align:right}
+.bar-t{flex:1;height:7px;background:#f1f5f9;border-radius:4px;overflow:hidden}
+.bar-f{height:100%;border-radius:4px}
+.bar-v{width:65px;font-size:12px;font-weight:600;color:var(--mid);flex-shrink:0}
+
+/* DEAL LIST */
+.dl{display:flex;flex-direction:column;gap:7px;max-height:350px;overflow-y:auto}
+.di{display:flex;align-items:center;gap:9px;padding:9px 12px;background:#fafaff;border-radius:8px;border:1px solid var(--border)}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.di-name{flex:1;font-size:13px;font-weight:500}
+.di-meta{font-size:11px;color:var(--muted);min-width:80px}
+.di-amt{font-size:13px;font-weight:700;min-width:75px;text-align:right}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(10,10,15,.5);z-index:1000;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;width:700px;max-width:95vw;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.25)}
+.modal-hdr{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-hdr h2{font-size:16px;font-weight:700}
+.modal-hdr .close{cursor:pointer;font-size:20px;color:var(--muted);background:none;border:none;line-height:1;padding:4px}
+.modal-hdr .close:hover{color:var(--dark)}
+.modal-body{padding:20px 24px;overflow-y:auto;flex:1}
+.modal-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.mk{background:var(--light);border-radius:10px;padding:14px 16px;border:1px solid var(--border)}
+.mk .lbl{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em}
+.mk .val{font-size:22px;font-weight:800;color:var(--p);margin-top:4px}
+.mk .sub{font-size:11px;color:var(--muted)}
+
+/* FOOTER */
+.ftr{background:linear-gradient(90deg,#3B0FBE,var(--p),var(--p2));color:rgba(255,255,255,.75);text-align:center;padding:20px;font-size:12px;margin-top:40px}
+.ftr b{color:#fff}
+
+@media(max-width:900px){.kpis,.g2{grid-template-columns:1fr 1fr}.sec,.hdr,.nav{padding-left:20px;padding-right:20px}}
+
+/* FILTER BAR */
+.fbar{background:#fff;border-bottom:1px solid var(--border);padding:10px 48px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;position:sticky;top:44px;z-index:99;box-shadow:0 2px 8px rgba(92,33,250,.04)}
+.fbar-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-right:4px}
+.fp{padding:5px 12px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s}
+.fp:hover{border-color:var(--p);color:var(--p)}
+.fp.on{background:var(--p);color:#fff;border-color:var(--p)}
+.fbar-custom{display:flex;align-items:center;gap:6px;margin-left:8px}
+.fbar-custom input[type=date]{padding:4px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;color:var(--dark);background:#fafaff;outline:none;cursor:pointer}
+.fbar-custom input[type=date]:focus{border-color:var(--p)}
+.fbar-custom .apply{padding:5px 12px;border-radius:20px;background:var(--p);color:#fff;border:none;font-size:12px;font-weight:600;cursor:pointer}
+.fbar-custom .apply:hover{background:var(--p2)}
+.fbadge{padding:3px 10px;border-radius:20px;background:#ede9fe;color:var(--p);font-size:11px;font-weight:700;margin-left:4px}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-logo">Synthflow</div>
+  <h1>Partner &amp; Reseller Report</h1>
+  <div class="hdr-meta">As of <b>June 3, 2026</b> &nbsp;·&nbsp; Source: HubSpot CRM &nbsp;·&nbsp; Click any metric to see deal details</div>
+</div>
+
+<nav class="nav">
+  <a class="on" onclick="showSec('partners',this)">Partner Performance</a>
+  <a onclick="showSec('avant',this)">Avant TAs</a>
+  <a onclick="showSec('reseller',this)">Reseller Pipeline</a>
+  <a onclick="showSec('partnerships',this)">Partnerships Pipeline</a>
+</nav>
+
+<div class="fbar">
+  <span class="fbar-label">Period</span>
+  <button class="fp on" data-f="all" onclick="setFilter('all')">All Time</button>
+  <button class="fp" data-f="last12" onclick="setFilter('last12')">Last 12 Months</button>
+  <button class="fp" data-f="thisyear" onclick="setFilter('thisyear')">2026</button>
+  <button class="fp" data-f="lastyear" onclick="setFilter('lastyear')">2025</button>
+  <button class="fp" data-f="q1" onclick="setFilter('q1')">Q1 2026</button>
+  <button class="fp" data-f="q2" onclick="setFilter('q2')">Q2 2026</button>
+  <button class="fp" data-f="q3" onclick="setFilter('q3')">Q3 2026</button>
+  <div class="fbar-custom">
+    <input type="date" id="f-from" placeholder="From">
+    <span style="color:var(--muted);font-size:12px">→</span>
+    <input type="date" id="f-to" placeholder="To">
+    <button class="apply" onclick="setCustomFilter()">Apply</button>
+  </div>
+  <span class="fbadge" id="filter-badge" style="display:none"></span>
+</div>
+
+<div id="sec-partners" class="sec on"></div>
+<div id="sec-avant" class="sec"></div>
+<div id="sec-reseller" class="sec"></div>
+<div id="sec-partnerships" class="sec"></div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-hdr"><h2 id="modal-title">Deal Details</h2><button class="close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<div class="ftr"><b>Synthflow</b> · Partner &amp; Reseller Report · June 2026 · Data from HubSpot CRM</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────
+const STAGE = {
+  appointmentscheduled:'Qualification', decisionmakerboughtin:'Discovery',
+  '1518127339':'Evaluation', contractsent:'Negotiation', '1518127340':'Contract Sent',
+  closedwon:'Closed Won', closedlost:'Closed Lost',
+  '5459581169':'Upcoming Renewal','5459581170':'Engaged','5459581171':'Negotiating Terms',
+  '5459581172':'Contract Sent','5459581173':'Closed Won','5459581174':'Closed Lost - Churn',
+  '3081602246':'Qualification','3121913079':'Discovery','3081602247':'Evaluation',
+  '3081602248':'Negotiation','4402941140':'Contract Sent','3081602251':'Closed Won','3081602252':'Closed Lost',
+};
+const STAGE_COLOR = {
+  'Qualification':'#93c5fd','Discovery':'#a78bfa','Evaluation':'#fcd34d',
+  'Negotiation':'#fb923c','Contract Sent':'#c084fc','Closed Won':'#4ade80',
+  'Closed Lost':'#f87171','Upcoming Renewal':'#fef08a','Engaged':'#86efac',
+  'Closed Lost - Churn':'#fca5a5',
+};
+const COLORS = ['#5C21FA','#7C3AFF','#9F67FF','#3b82f6','#06b6d4','#10b981','#f59e0b','#ec4899','#84cc16','#f43f5e','#14b8a6','#a78bfa'];
+
+const TA_MAP = [
+  {match:'st. john',ta:'Sugar Hill'},{match:'sugar hill',ta:'Sugar Hill'},
+  {match:'monarch health',ta:'Opkalla'},{match:'ascend learning',ta:'Bear IT'},
+  {match:'triforza',ta:'Upstack'},{match:'balance health',ta:'Bridgepointe'},
+  {match:'venners',ta:'Excelien'},{match:'sedexis',ta:'Sedexis'},{match:'pluto9',ta:'Sedexis'},
+  {match:'express wash',ta:'Network Solutions Intl'},{match:'dex imaging',ta:'Tecnoto (TA)'},
+  {match:'aptiva',ta:'Upstack'},{match:'roi cx',ta:'Bridgepointe'},
+  {match:'ethos group',ta:'LAM Technology'},{match:'pye-barker',ta:'LAM Technology'},
+  {match:'72sold',ta:'WiredIQ'},{match:'optical express',ta:'Softcat'},
+  {match:'medical answering',ta:'Upstack'},{match:'orthosouth',ta:'Upstack'},
+  {match:'allianz',ta:'Unknown TA'},
+];
+function getTA(name){ if(!name) return 'Unknown TA'; const l=name.toLowerCase(); for(const e of TA_MAP) if(l.includes(e.match.toLowerCase())) return e.ta; return 'Unknown TA'; }
+
+// Partner deals — all deals with partner_name set
+const P_RAW = [
+  {name:"St. John's University - New Logo - Sugar Hill",partner:"Avant",amount:96000,cur:"USD",stage:"1518127339",close:"2026-07-03",type:"New Business"},
+  {name:"Monarch Health Services",partner:"Avant",amount:70000,cur:"USD",stage:"decisionmakerboughtin",close:"2026-09-26",type:"New Business"},
+  {name:"Ascend Learning - Bear IT - Avant",partner:"Avant",amount:288984,cur:"USD",stage:"decisionmakerboughtin",close:"2026-07-01",type:"New Business"},
+  {name:"Triforza - Upstack - New Logo",partner:"Avant",amount:100000,cur:"USD",stage:"appointmentscheduled",close:"2026-12-11",type:"New Business"},
+  {name:"Balance Health - Bridgepointe - New Logo",partner:"Avant",amount:75000,cur:"USD",stage:"appointmentscheduled",close:"2026-10-15",type:"New Business"},
+  {name:"Avant – Venners",partner:"Avant",amount:50000,cur:"USD",stage:"appointmentscheduled",close:"2026-09-30",type:"New Business"},
+  {name:"Allianz Worldwide Partners",partner:"Avant",amount:75000,cur:"USD",stage:"appointmentscheduled",close:"2026-09-30",type:"New Business"},
+  {name:"Avant - Sedexis - Pluto9 - New Deal",partner:"Avant",amount:97200,cur:"USD",stage:"closedwon",close:"2026-04-04",type:"New Business"},
+  {name:"Express Wash Concepts - New Logo",partner:"Avant",amount:130000,cur:"USD",stage:"1518127339",close:"2026-07-31",type:"New Business"},
+  {name:"Tecnoto – DEX Imaging",partner:"Avant",amount:100000,cur:"USD",stage:"contractsent",close:"2026-06-27",type:"New Business"},
+  {name:"Aptiva Medical - New Deal",partner:"Avant",amount:30000,cur:"USD",stage:"closedlost",close:"2026-03-18",type:"New Business"},
+  {name:"ROI CX Solutions",partner:"Avant",amount:30000,cur:"USD",stage:"decisionmakerboughtin",close:"2026-08-17",type:"New Business"},
+  {name:"Avant - LAM Technology - Ethos Group",partner:"Avant",amount:36000,cur:"USD",stage:"1518127339",close:"2026-08-13",type:"New Business"},
+  {name:"Pye-Barker Fire & Safety",partner:"Avant",amount:350000,cur:"USD",stage:"closedlost",close:"2026-05-26",type:"New Business"},
+  {name:"72SOLD - New Deal",partner:"Avant",amount:50000,cur:"USD",stage:"closedlost",close:"2026-04-09",type:"New Business"},
+  {name:"Optical Express",partner:"Avant",amount:100000,cur:"USD",stage:"1518127339",close:"2026-08-01",type:"New Business"},
+  {name:"Upstack – Medical Answering Services LLC",partner:"Avant",amount:150000,cur:"USD",stage:"decisionmakerboughtin",close:"2026-08-14",type:"New Business"},
+  {name:"Upstack – OrthoSouth",partner:"Avant",amount:58000,cur:"USD",stage:"1518127339",close:"2026-09-30",type:"New Business"},
+  {name:"City Plumbing - Freshworks",partner:"Freshworks",amount:20000,cur:"USD",stage:"decisionmakerboughtin",close:"2026-11-12",type:"New Business"},
+  {name:"Legends Global - Freshworks",partner:"Freshworks",amount:50000,cur:"USD",stage:"decisionmakerboughtin",close:"2026-09-30",type:"New Business"},
+  {name:"TCGROUP - Freshworks",partner:"Freshworks",amount:25000,cur:"EUR",stage:"1518127339",close:"2026-06-30",type:"New Business"},
+  {name:"Freshworks – Sunweb Group",partner:"Freshworks",amount:75000,cur:"USD",stage:"decisionmakerboughtin",close:"2026-09-30",type:"New Business"},
+  {name:"Freshworks – Currency Exchange International",partner:"Freshworks",amount:75000,cur:"USD",stage:"decisionmakerboughtin",close:"2026-10-30",type:"New Business"},
+  {name:"Hugendubel",partner:"Freshworks",amount:40000,cur:"USD",stage:"appointmentscheduled",close:"2026-12-31",type:"New Business"},
+  {name:"Ipostal1 - New Deal",partner:"Freshworks",amount:30000,cur:"USD",stage:"closedlost",close:"2026-03-22",type:"New Business"},
+  {name:"Bensons for Beds",partner:"Freshworks",amount:52800,cur:"USD",stage:"closedlost",close:"2026-04-10",type:"New Business"},
+  {name:"TC Group - New Deal",partner:"Freshworks",amount:20000,cur:"EUR",stage:"closedlost",close:"2026-04-02",type:"New Business"},
+  {name:"Weber - Intrum Expansion",partner:"Weber",amount:147000,cur:"USD",stage:"1518127339",close:"2026-07-25",type:"Expansion"},
+  {name:"doValue (Team4Collections) - Weber",partner:"Weber",amount:30000,cur:"USD",stage:"1518127339",close:"2026-06-30",type:"New Business"},
+  {name:"Intrum - New Deal",partner:"Weber",amount:28800,cur:"USD",stage:"closedwon",close:"2025-12-18",type:"New Business"},
+  {name:"Medisaludtv - Deal #2",partner:"Weber",amount:30000,cur:"USD",stage:"closedlost",close:"2026-05-08",type:"New Business"},
+  {name:"Medisaludtv - New Deal",partner:"Weber",amount:30000,cur:"USD",stage:"closedlost",close:"2026-02-10",type:"New Business"},
+  {name:"Snubes - VIAFON",partner:"Snubes",amount:20000,cur:"EUR",stage:"appointmentscheduled",close:"2026-08-31",type:"New Business"},
+  {name:"Snubes GmbH",partner:"Snubes",amount:24000,cur:"EUR",stage:"closedwon",close:"2026-04-30",type:"New Business"},
+  {name:"Snubes (Smile Eyes)",partner:"Snubes",amount:32400,cur:"EUR",stage:"closedlost",close:"2026-05-11",type:"New Business"},
+  {name:"PEC360 - Expansion",partner:"PEC360",amount:38000,cur:"USD",stage:"1518127339",close:"2026-06-27",type:"Expansion"},
+  {name:"Bodyshop Booster - New Deal",partner:"Bodyshop Booster",amount:64200,cur:"USD",stage:"closedwon",close:"2026-03-31",type:"New Business"},
+  {name:"Convey365 - Chat Upsell",partner:"Convey365",amount:6000,cur:"USD",stage:"closedwon",close:"2026-03-13",type:"Expansion"},
+  {name:"Vindico - Professional Services",partner:"Vindico",amount:8000,cur:"USD",stage:"1518127339",close:"2026-10-31",type:"Expansion"},
+  {name:"Vindico - Upsell",partner:"Vindico",amount:32000,cur:"USD",stage:"contractsent",close:"2026-06-27",type:"Expansion"},
+  {name:"Porch Moving Group",partner:"Orchard",amount:30000,cur:"USD",stage:"closedlost",close:"2026-04-10",type:"New Business"},
+  {name:"Ilunion - Once Project",partner:"Ilunion",amount:20000,cur:"USD",stage:"closedlost",close:"2026-05-11",type:"New Business"},
+  {name:"Engageware - 50 Hrs PS Retainer",partner:"Engageware",amount:8500,cur:"USD",stage:"closedwon",close:"2026-05-18",type:"Expansion"},
+  {name:"Medialine Group - New Deal",partner:"Medialine",amount:30000,cur:"EUR",stage:"closedwon",close:"2026-03-24",type:"New Business"},
+  {name:"Startek - GameStop",partner:"Abhi Jain / Cohesumm LLC",amount:80000,cur:"USD",stage:"1518127339",close:"2026-10-16",type:"New Business"},
+  {name:"Tecnoto – Palm Garden Health",partner:"Tecnoto",amount:55000,cur:"USD",stage:"1518127339",close:"2026-09-26",type:"New Business"},
+  {name:"Grupo Nacional de Proyectos (Altamira) - New Deal",partner:"GNP",amount:267000,cur:"USD",stage:"closedwon",close:"2025-03-11",type:"New Business"},
+  {name:"Grupo Nacional de Proyectos - Contract Rewrite",partner:"GNP",amount:92000,cur:"USD",stage:"closedwon",close:"2025-03-11",type:"New Business"},
+  {name:"Diyeva",partner:"Diyeva",amount:25500,cur:"USD",stage:"closedwon",close:"2026-02-12",type:"New Business"},
+  {name:"Focus Group - New Deal",partner:"Focus Group",amount:112500,cur:"USD",stage:"closedwon",close:"2025-12-18",type:"New Business"},
+  {name:"Convey365 - New Deal",partner:"Convey365",amount:20000,cur:"USD",stage:"closedwon",close:"2025-12-18",type:"New Business"},
+  {name:"Vindico",partner:"Vindico",amount:44000,cur:"USD",stage:"closedwon",close:"2025-12-04",type:"New Business"},
+];
+
+// Reseller deals (deal_motion = Reseller) - key active ones
+const R_RAW = [
+  {name:"Intermedia — Renewal",amount:223500,cur:"USD",stage:"5459581169",close:"2026-11-27",type:"Renewal"},
+  {name:"Engageware — Renewal",amount:66000,cur:"USD",stage:"5459581169",close:"2026-11-27",type:"Renewal"},
+  {name:"Vindico - Upsell",amount:32000,cur:"USD",stage:"contractsent",close:"2026-06-27",type:"Expansion"},
+  {name:"CRM Voice — Renewal",amount:34500,cur:"USD",stage:"1518127340",close:"2026-06-18",type:"Renewal"},
+  {name:"Untangled - Reseller",amount:24000,cur:"USD",stage:"1518127340",close:"2026-06-30",type:"New Business"},
+  {name:"Avant - Sedexis - Pluto9",amount:97200,cur:"USD",stage:"closedwon",close:"2026-04-04",type:"New Business"},
+  {name:"Bodyshop Booster",amount:64200,cur:"USD",stage:"closedwon",close:"2026-03-31",type:"New Business"},
+  {name:"Convey365 - Chat Upsell",amount:6000,cur:"USD",stage:"closedwon",close:"2026-03-13",type:"Expansion"},
+  {name:"Diyeva",amount:25500,cur:"USD",stage:"closedwon",close:"2026-02-12",type:"New Business"},
+  {name:"Snubes GmbH",amount:24000,cur:"EUR",stage:"closedwon",close:"2026-04-30",type:"New Business"},
+  {name:"Medialine Group",amount:30000,cur:"EUR",stage:"closedwon",close:"2026-03-24",type:"New Business"},
+  {name:"Vindico",amount:44000,cur:"USD",stage:"closedwon",close:"2025-12-04",type:"New Business"},
+  {name:"Grupo Nacional de Proyectos (Altamira) - New Deal",partner:"GNP",amount:267000,cur:"USD",stage:"closedwon",close:"2025-03-11",type:"New Business"},
+  {name:"Grupo Nacional de Proyectos - Contract Rewrite",partner:"GNP",amount:92000,cur:"USD",stage:"closedwon",close:"2025-03-11",type:"New Business"},
+  {name:"Focus Group",amount:112500,cur:"USD",stage:"closedwon",close:"2025-12-18",type:"New Business"},
+  {name:"Convey365 - New Deal",amount:20000,cur:"USD",stage:"closedwon",close:"2025-12-18",type:"New Business"},
+  {name:"Phonexa",amount:24000,cur:"USD",stage:"closedwon",close:"2025-12-23",type:"New Business"},
+  {name:"Equature",amount:28800,cur:"USD",stage:"closedwon",close:"2025-08-11",type:"New Business"},
+  {name:"Engageware",partner:"Engageware",amount:66000,cur:"USD",stage:"closedwon",close:"2025-09-02",type:"New Business"},
+  {name:"NetCarrier",amount:33600,cur:"USD",stage:"closedwon",close:"2025-09-11",type:"New Business"},
+  {name:"PEC360",amount:60000,cur:"USD",stage:"closedwon",close:"2025-10-01",type:"New Business"},
+  {name:"Cibernos",amount:52676,cur:"USD",stage:"closedwon",close:"2025-06-22",type:"New Business"},
+  {name:"Company Periscope",amount:42900,cur:"USD",stage:"closedwon",close:"2025-06-16",type:"New Business"},
+  {name:"The Unlimited International",amount:28800,cur:"USD",stage:"closedwon",close:"2025-09-29",type:"New Business"},
+  {name:"Emergia / BeyondCX: Telepizza",amount:104935,cur:"USD",stage:"closedwon",close:"2025-10-29",type:"New Business"},
+  {name:"Gateway Global LTD",amount:72600,cur:"USD",stage:"closedwon",close:"2025-05-27",type:"New Business"},
+  {name:"VantagePoint",amount:36000,cur:"USD",stage:"closedwon",close:"2025-07-08",type:"New Business"},
+  {name:"sfd (Systems for Dentists)",amount:90000,cur:"USD",stage:"closedwon",close:"2025-12-18",type:"New Business"},
+  {name:"Agnts AI",amount:65550,cur:"USD",stage:"closedwon",close:"2025-05-19",type:"New Business"},
+  {name:"The Heart of Europe",amount:28800,cur:"USD",stage:"closedwon",close:"2025-06-03",type:"New Business"},
+  {name:"Parakeeet",amount:28800,cur:"USD",stage:"closedwon",close:"2025-07-13",type:"New Business"},
+  {name:"The Producer Boost",amount:28800,cur:"USD",stage:"closedwon",close:"2025-05-29",type:"New Business"},
+  {name:"Smart Center México",amount:36000,cur:"USD",stage:"closedwon",close:"2025-04-20",type:"New Business"},
+  {name:"STAN",amount:36000,cur:"USD",stage:"closedwon",close:"2025-04-29",type:"New Business"},
+  {name:"Intermedia - New Deal",amount:223500,cur:"USD",stage:"closedwon",close:"2025-07-10",type:"New Business"},
+  {name:"Freshworks - Phase 1",amount:21000,cur:"USD",stage:"closedwon",close:"2025-04-23",type:"New Business"},
+  {name:"themg.co",amount:43200,cur:"USD",stage:"closedwon",close:"2025-04-15",type:"New Business"},
+  {name:"XETECHS GROUP",amount:28800,cur:"USD",stage:"closedwon",close:"2025-01-27",type:"New Business"},
+  {name:"CRM Voice",amount:28800,cur:"USD",stage:"closedwon",close:"2024-10-15",type:"New Business"},
+  {name:"HighLevel",amount:60000,cur:"USD",stage:"closedwon",close:"2024-09-24",type:"New Business"},
+  {name:"Marketing Transformers",amount:0,cur:"USD",stage:"closedwon",close:"2024-10-13",type:"New Business"},
+];
+
+// Partnerships pipeline
+const PP_RAW = [
+  {name:"Startek - BPO",stage:"3121913079",amount:80000,src:"Partner"},{name:"186Kloud",stage:"3081602251",amount:0,src:"Inbound"},
+  {name:"Microsoft Azure - Tech Partner",stage:"3121913079",amount:0,src:"Inbound"},{name:"Stripe - Tech Partner",stage:"3081602246",amount:0,src:"Inbound"},
+  {name:"Freshworks - Tech Partner",stage:"3081602251",amount:0,src:"Inbound"},{name:"Simplify",stage:"3121913079",amount:0,src:"Inbound"},
+  {name:"Tecnoto - Referral",stage:"3081602251",amount:0,src:"Inbound"},{name:"AWS - Tech Partner",stage:"3121913079",amount:0,src:"Inbound"},
+  {name:"Teleperformance - BPO",stage:"3121913079",amount:0,src:"Inbound"},{name:"Black Box",stage:"3121913079",amount:0,src:"Inbound"},
+  {name:"Eckoh",stage:"3081602248",amount:0,src:"Outbound"},{name:"Cohesumm - Referral",stage:"3081602251",amount:0,src:"Inbound"},
+  {name:"8x8",stage:"4402941140",amount:0,src:"Inbound"},{name:"Beyond CX",stage:"3081602251",amount:0,src:"Outbound"},
+  {name:"Alveni AI",stage:"3081602251",amount:45000,src:"Inbound"},{name:"Upstack - Referral",stage:"3081602247",amount:0,src:"Outbound"},
+  {name:"Ilunion - BPO",stage:"3081602247",amount:0,src:"Outbound"},{name:"BCG",stage:"3121913079",amount:0,src:"Outbound"},
+  {name:"Lean Solutions Group",stage:"3081602246",amount:0,src:"Outbound"},{name:"Stratosphere Networks",stage:"3121913079",amount:0,src:"Outbound"},
+  {name:"Servinform",stage:"3081602246",amount:0,src:"Inbound"},{name:"Technology Source",stage:"3081602252",amount:30,src:"Outbound"},
+  {name:"Bill Gosling Outsourcing",stage:"3081602246",amount:0,src:"Outbound"},{name:"Innovation Business Solutions",stage:"3121913079",amount:0,src:"Outbound"},
+  {name:"TDM",stage:"3121913079",amount:0,src:"Outbound"},{name:"Amplix",stage:"3121913079",amount:0,src:"Outbound"},
+  {name:"OneSource",stage:"3121913079",amount:0,src:"Outbound"},{name:"AM Infoweb",stage:"3081602246",amount:0,src:"Outbound"},
+  {name:"CallTower",stage:"3121913079",amount:0,src:"Outbound"},{name:"Omni Interactions",stage:"3081602246",amount:0,src:"Outbound"},
+  {name:"Sandler Partners",stage:"3121913079",amount:0,src:"Outbound"},{name:"Opkalla",stage:"3121913079",amount:0,src:"Outbound"},
+  {name:"Concentrix - BPO",stage:"3121913079",amount:0,src:"Inbound"},{name:"CCD",stage:"3081602246",amount:0,src:"Outbound"},
+  {name:"Bridgepointe - Referral",stage:"3121913079",amount:0,src:"Outbound"},{name:"V-Soft Consulting",stage:"3081602252",amount:30,src:"Inbound"},
+  {name:"Telarus",stage:"3121913079",amount:0,src:"Outbound"},{name:"CustomerHD",stage:"3081602246",amount:0,src:"Inbound"},
+  {name:"IntelliBPO",stage:"3081602246",amount:0,src:"Outbound"},{name:"SEBPO",stage:"3121913079",amount:0,src:"Outbound"},
+  {name:"Damco Solutions",stage:"3081602246",amount:0,src:"Inbound"},{name:"PortaOne",stage:"3081602246",amount:0,src:"Inbound"},
+  {name:"EverCommerce",stage:"3081602246",amount:0,src:"Inbound"},{name:"Xtendops - BPO",stage:"3081602246",amount:0,src:"Inbound"},
+  {name:"TaskUs",stage:"3081602246",amount:0,src:"Inbound"},{name:"Datamark",stage:"3081602246",amount:0,src:"Outbound"},
+  {name:"EY",stage:"3081602247",amount:0,src:"Inbound"},{name:"Qualfon",stage:"3081602246",amount:0,src:"Inbound"},
+  {name:"DASH BPO",stage:"3081602246",amount:0,src:"Outbound"},{name:"NIP Group",stage:"3081602246",amount:0,src:"Inbound"},
+  {name:"Unity Communications",stage:"3081602246",amount:0,src:"Inbound"},{name:"Conduent",stage:"3081602246",amount:0,src:"Outbound"},
+  {name:"Tru Performance Inc",stage:"3081602246",amount:0,src:"Inbound"},{name:"GDS Group",stage:"3121913079",amount:0,src:"Inbound"},
+  {name:"Clay",stage:"3081602246",amount:0,src:"Inbound"},{name:"Customer Contact Services",stage:"3081602246",amount:0,src:"Inbound"},
+  {name:"Ströer X",stage:"3081602246",amount:0,src:"Outbound"},{name:"Computer Copilot",stage:"3081602251",amount:28800,src:"Inbound"},
+  {name:"Threecolts",stage:"3121913079",amount:0,src:"Outbound"},
+];
+
+// ── FILTER STATE ─────────────────────────────────────────────────────────
+let F_START = null, F_END = null;
+var PARTNER_DEALS = P_RAW, RESELLER_DEALS = R_RAW, PIPE_DEALS = PP_RAW;
+
+function filterByDate(arr){
+  if(!F_START && !F_END) return arr;
+  return arr.filter(d=>{
+    if(!d.close) return true;
+    const dt = new Date(d.close);
+    if(F_START && dt < F_START) return false;
+    if(F_END && dt > F_END) return false;
+    return true;
+  });
+}
+
+function setFilter(preset){
+  const TODAY = new Date('2026-06-03');
+  const y = 2026;
+  document.querySelectorAll('.fp').forEach(b=>b.classList.remove('on'));
+  const btn = document.querySelector(`[data-f="${preset}"]`);
+  if(btn) btn.classList.add('on');
+  switch(preset){
+    case 'all':    F_START=null; F_END=null; break;
+    case 'last12': F_START=new Date('2025-06-03'); F_END=new Date('2026-06-03'); break;
+    case 'thisyear': F_START=new Date('2026-01-01'); F_END=new Date('2026-12-31'); break;
+    case 'lastyear': F_START=new Date('2025-01-01'); F_END=new Date('2025-12-31'); break;
+    case 'q1':  F_START=new Date('2026-01-01'); F_END=new Date('2026-03-31'); break;
+    case 'q2':  F_START=new Date('2026-04-01'); F_END=new Date('2026-06-30'); break;
+    case 'q3':  F_START=new Date('2026-07-01'); F_END=new Date('2026-09-30'); break;
+  }
+  updateBadge(preset);
+  applyFilter();
+}
+
+function setCustomFilter(){
+  const from = document.getElementById('f-from').value;
+  const to   = document.getElementById('f-to').value;
+  if(!from && !to) return;
+  document.querySelectorAll('.fp').forEach(b=>b.classList.remove('on'));
+  F_START = from ? new Date(from) : null;
+  F_END   = to   ? new Date(to)   : null;
+  const label = (from||'…') + ' → ' + (to||'…');
+  const badge = document.getElementById('filter-badge');
+  badge.textContent = label; badge.style.display='inline';
+  applyFilter();
+}
+
+function updateBadge(preset){
+  const badge = document.getElementById('filter-badge');
+  const labels = {all:'All Time',last12:'Last 12 Months',thisyear:'2026',lastyear:'2025',q1:'Q1 2026',q2:'Q2 2026',q3:'Q3 2026'};
+  if(preset==='all'){ badge.style.display='none'; return; }
+  badge.textContent = labels[preset]||preset; badge.style.display='inline';
+}
+
+function applyFilter(){
+  PARTNER_DEALS  = filterByDate(P_RAW);
+  RESELLER_DEALS = filterByDate(R_RAW);
+  PIPE_DEALS     = filterByDate(PP_RAW);
+  renderAll();
+}
+
+function renderAll(){
+  renderPartners();
+  renderAvant();
+  renderReseller();
+  renderPartnerships();
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function stageLabel(s){ return STAGE[s] || s; }
+function isWon(s){ const l=stageLabel(s); return l==='Closed Won'; }
+function isLost(s){ const l=stageLabel(s); return l==='Closed Lost'||l==='Closed Lost - Churn'; }
+function isActive(s){ return !isWon(s)&&!isLost(s); }
+function fmt(n,cur='USD'){
+  if(!n||n===0) return '—';
+  const sym = cur==='EUR'?'€':'$';
+  if(n>=1000000) return sym+(n/1000000).toFixed(1)+'M';
+  if(n>=1000) return sym+(n/1000).toFixed(0)+'K';
+  return sym+n.toLocaleString();
+}
+function stageBadge(s){
+  const l=stageLabel(s);
+  const c=STAGE_COLOR[l]||'#e2e8f0';
+  return `<span class="b" style="background:${c}22;color:${isWon(s)?'#166534':isLost(s)?'#991b1b':'#334155'}">${l}</span>`;
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────
+function openModal(title, html){
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal(e){
+  if(!e||e.target===document.getElementById('overlay'))
+    document.getElementById('overlay').classList.remove('open');
+}
+
+function dealTable(deals, showPartner=false){
+  if(!deals.length) return '<p style="color:#94a3b8;padding:10px 0">No deals found.</p>';
+  const active = deals.filter(d=>isActive(d.stage));
+  const won = deals.filter(d=>isWon(d.stage));
+  const lost = deals.filter(d=>isLost(d.stage));
+  const activePipe = active.reduce((s,d)=>s+(d.amount||0),0);
+  const wonVal = won.reduce((s,d)=>s+(d.amount||0),0);
+  let html = `<div class="modal-kpis">
+    <div class="mk"><div class="lbl">Active Pipeline</div><div class="val">${fmt(activePipe)}</div><div class="sub">${active.length} deals</div></div>
+    <div class="mk"><div class="lbl">Closed Won</div><div class="val" style="color:#166534">${fmt(wonVal)}</div><div class="sub">${won.length} deals</div></div>
+    <div class="mk"><div class="lbl">Closed Lost</div><div class="val" style="color:#991b1b">${lost.reduce((s,d)=>s+(d.amount||0),0)>0?fmt(lost.reduce((s,d)=>s+(d.amount||0),0)):lost.length+' deals'}</div><div class="sub">${lost.length} deals</div></div>
+  </div>`;
+  html += '<table class="tbl"><thead><tr>';
+  html += '<th>Deal</th>';
+  if(showPartner) html += '<th>Partner</th>';
+  html += '<th>Amount</th><th>Stage</th><th>Close</th></tr></thead><tbody>';
+  const sorted = [...deals].sort((a,b)=>{
+    if(isActive(a.stage)&&!isActive(b.stage)) return -1;
+    if(!isActive(a.stage)&&isActive(b.stage)) return 1;
+    return (b.amount||0)-(a.amount||0);
+  });
+  sorted.forEach(d=>{
+    html+=`<tr><td><strong>${d.name}</strong></td>`;
+    if(showPartner) html+=`<td>${d.partner||''}</td>`;
+    html+=`<td class="n">${d.amount?fmt(d.amount,d.cur||'USD'):'—'}</td><td>${stageBadge(d.stage)}</td><td style="color:var(--muted);font-size:12px">${d.close||''}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  return html;
+}
+
+// ── PARTNER PERFORMANCE ───────────────────────────────────────────────────
+function renderPartners(){
+  const el = document.getElementById('sec-partners');
+  const deals = PARTNER_DEALS;
+  const active = deals.filter(d=>isActive(d.stage));
+  const won = deals.filter(d=>isWon(d.stage));
+  const lost = deals.filter(d=>isLost(d.stage));
+  const activePipe = active.reduce((s,d)=>s+(d.amount||0),0);
+  const wonVal = won.reduce((s,d)=>s+(d.amount||0),0);
+
+  // by partner
+  const byP = {};
+  deals.forEach(d=>{
+    if(!byP[d.partner]) byP[d.partner]={name:d.partner,deals:[],active:[],won:[],lost:[]};
+    byP[d.partner].deals.push(d);
+    if(isWon(d.stage)) byP[d.partner].won.push(d);
+    else if(isLost(d.stage)) byP[d.partner].lost.push(d);
+    else byP[d.partner].active.push(d);
+  });
+  const partners = Object.values(byP).sort((a,b)=>b.active.reduce((s,d)=>s+(d.amount||0),0)-a.active.reduce((s,d)=>s+(d.amount||0),0));
+
+  let html = `
+  <div class="sec-title">Partner Performance</div>
+  <div class="sec-sub">All deals with a Partner Name set in HubSpot — click any card or row to see deal details</div>
+  <div class="kpis">
+    <div class="kpi accent" onclick="openModal('Active Pipeline — All Partners', dealTable(PARTNER_DEALS.filter(d=>isActive(d.stage)),true))">
+      <div class="lbl">Active Pipeline</div><div class="val">${fmt(activePipe)}</div>
+      <div class="sub">${active.length} open deals</div><div class="drill">▸ Click to see deals</div>
+    </div>
+    <div class="kpi" onclick="openModal('Closed Won — All Partners', dealTable(PARTNER_DEALS.filter(d=>isWon(d.stage)),true))">
+      <div class="lbl">Closed Won</div><div class="val">${fmt(wonVal)}</div>
+      <div class="sub">${won.length} deals won</div><div class="drill" style="color:var(--p)">▸ Click to see deals</div>
+    </div>
+    <div class="kpi" onclick="openModal('All Partner Deals', dealTable(PARTNER_DEALS,true))">
+      <div class="lbl">Total Deals</div><div class="val">${deals.length}</div>
+      <div class="sub">across ${partners.length} partners</div><div class="drill" style="color:var(--p)">▸ Click to see deals</div>
+    </div>
+    <div class="kpi" onclick="openModal('Closed Lost — All Partners', dealTable(PARTNER_DEALS.filter(d=>isLost(d.stage)),true))">
+      <div class="lbl">Closed Lost</div><div class="val">${lost.length}</div>
+      <div class="sub">${fmt(lost.reduce((s,d)=>s+(d.amount||0),0))} lost pipeline</div><div class="drill" style="color:var(--p)">▸ Click to see deals</div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card"><h3>Active Pipeline by Partner</h3><div class="ch"><canvas id="partnerBarChart"></canvas></div></div>
+    <div class="card"><h3>Deals by Stage</h3><div class="ch"><canvas id="partnerStageChart"></canvas></div></div>
+  </div>
+  <div class="card">
+    <h3>Partner Breakdown — click a row to drill in</h3>
+    <table class="tbl"><thead><tr><th>Partner</th><th>Active Pipeline</th><th>Won Value</th><th>Deals</th><th>Active</th><th>Won</th><th>Lost</th></tr></thead><tbody>`;
+
+  partners.forEach((p,i)=>{
+    const ap = p.active.reduce((s,d)=>s+(d.amount||0),0);
+    const wv = p.won.reduce((s,d)=>s+(d.amount||0),0);
+    const c = COLORS[i%COLORS.length];
+    html+=`<tr class="clickable" onclick="openModal('${p.name} — All Deals', dealTable(PARTNER_DEALS.filter(d=>d.partner==='${p.name}')))">
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:8px"></span><strong>${p.name}</strong></td>
+      <td class="n">${ap?fmt(ap):'—'}</td><td class="n">${wv?fmt(wv):'—'}</td>
+      <td>${p.deals.length}</td>
+      <td><span class="b ba">${p.active.length}</span></td>
+      <td><span class="b bw">${p.won.length}</span></td>
+      <td><span class="b bl">${p.lost.length}</span></td>
+    </tr>`;
+  });
+  html+='</tbody></table></div>';
+  el.innerHTML = html;
+
+  // bar chart
+  const topPartners = partners.slice(0,8);
+  new Chart(document.getElementById('partnerBarChart'),{
+    type:'bar',
+    data:{ labels:topPartners.map(p=>p.name), datasets:[{data:topPartners.map(p=>p.active.reduce((s,d)=>s+(d.amount||0),0)),backgroundColor:COLORS,borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmt(c.raw)}}},scales:{y:{ticks:{callback:v=>fmt(v),font:{size:10}},grid:{color:'#f5f3ff'}},x:{ticks:{font:{size:10}}}}}
+  });
+  // stage donut
+  const stageCounts={};
+  deals.forEach(d=>{ const l=stageLabel(d.stage); stageCounts[l]=(stageCounts[l]||0)+1; });
+  const se=Object.entries(stageCounts);
+  new Chart(document.getElementById('partnerStageChart'),{
+    type:'doughnut',
+    data:{labels:se.map(e=>e[0]),datasets:[{data:se.map(e=>e[1]),backgroundColor:se.map(e=>STAGE_COLOR[e[0]]||'#cbd5e1'),borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},padding:8,boxWidth:12}}}}
+  });
+}
+
+// ── AVANT TAs ─────────────────────────────────────────────────────────────
+function renderAvant(){
+  const el = document.getElementById('sec-avant');
+  const deals = PARTNER_DEALS.filter(d=>d.partner==='Avant');
+  const byTA = {};
+  deals.forEach(d=>{
+    const ta = getTA(d.name);
+    if(!byTA[ta]) byTA[ta]={ta,deals:[],active:[],won:[],lost:[]};
+    byTA[ta].deals.push(d);
+    if(isWon(d.stage)) byTA[ta].won.push(d);
+    else if(isLost(d.stage)) byTA[ta].lost.push(d);
+    else byTA[ta].active.push(d);
+  });
+  const tas = Object.values(byTA).sort((a,b)=>b.active.reduce((s,d)=>s+(d.amount||0),0)-a.active.reduce((s,d)=>s+(d.amount||0),0));
+  const activePipe = deals.filter(d=>isActive(d.stage)).reduce((s,d)=>s+(d.amount||0),0);
+  const wonVal = deals.filter(d=>isWon(d.stage)).reduce((s,d)=>s+(d.amount||0),0);
+  const topTA = tas[0];
+
+  let html = `
+  <div class="sec-title">Avant — Technology Advisor (TA) Breakdown</div>
+  <div class="sec-sub">Avant is Synthflow's primary TSD. Each deal flows through a TA underneath Avant. Click any card or row to drill in.</div>
+  <div class="kpis">
+    <div class="kpi accent" onclick="openModal('Avant Active Pipeline', dealTable(PARTNER_DEALS.filter(d=>d.partner==='Avant'&&isActive(d.stage))))">
+      <div class="lbl">Active Pipeline</div><div class="val">${fmt(activePipe)}</div>
+      <div class="sub">${deals.filter(d=>isActive(d.stage)).length} open deals</div><div class="drill">▸ Click to see deals</div>
+    </div>
+    <div class="kpi" onclick="openModal('Avant Closed Won', dealTable(PARTNER_DEALS.filter(d=>d.partner==='Avant'&&isWon(d.stage))))">
+      <div class="lbl">Closed Won</div><div class="val">${fmt(wonVal)}</div>
+      <div class="sub">${deals.filter(d=>isWon(d.stage)).length} deal</div><div class="drill" style="color:var(--p)">▸ Click to see deals</div>
+    </div>
+    <div class="kpi">
+      <div class="lbl">Active TAs</div><div class="val">${tas.filter(t=>t.active.length>0).length}</div>
+      <div class="sub">${tas.length} total TAs tracked</div>
+    </div>
+    <div class="kpi" onclick="openModal('${topTA.ta} — All Deals', dealTable(topTA.deals))">
+      <div class="lbl">Largest TA (Pipeline)</div><div class="val" style="font-size:18px">${topTA.ta}</div>
+      <div class="sub">${fmt(topTA.active.reduce((s,d)=>s+(d.amount||0),0))} active · ${topTA.deals.length} deals</div><div class="drill" style="color:var(--p)">▸ Click to see deals</div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card"><h3>Active Pipeline by TA</h3>
+      <div id="ta-bars" style="padding-top:4px">`;
+
+  const maxTA = Math.max(...tas.map(t=>t.active.reduce((s,d)=>s+(d.amount||0),0)),1);
+  tas.forEach((t,i)=>{
+    const ap=t.active.reduce((s,d)=>s+(d.amount||0),0);
+    const pct=ap/maxTA*100;
+    const c=COLORS[i%COLORS.length];
+    html+=`<div class="bar-r" style="cursor:pointer" onclick="openModal('${t.ta} — All Deals',dealTable(PARTNER_DEALS.filter(d=>d.partner==='Avant'&&getTA(d.name)==='${t.ta}')))">
+      <div class="bar-lbl" style="width:150px">${t.ta}</div>
+      <div class="bar-t"><div class="bar-f" style="width:${Math.max(pct,2)}%;background:${c}"></div></div>
+      <div class="bar-v">${ap?fmt(ap):'(won/lost)'}</div>
+    </div>`;
+  });
+
+  html += `</div></div>
+    <div class="card"><h3>TA Deal Distribution</h3><div class="ch"><canvas id="taDonut"></canvas></div></div>
+  </div>
+  <div class="card">
+    <h3>TA Deal Table — click a row to drill in</h3>
+    <table class="tbl"><thead><tr><th>TA</th><th>Active Pipeline</th><th>Won</th><th>Deals</th><th>Active</th><th>Won</th><th>Lost</th></tr></thead><tbody>`;
+
+  tas.forEach((t,i)=>{
+    const ap=t.active.reduce((s,d)=>s+(d.amount||0),0);
+    const wv=t.won.reduce((s,d)=>s+(d.amount||0),0);
+    html+=`<tr class="clickable" onclick="openModal('${t.ta} — All Deals',dealTable(PARTNER_DEALS.filter(d=>d.partner==='Avant'&&getTA(d.name)==='${t.ta}')))">
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${COLORS[i%COLORS.length]};margin-right:8px"></span><strong>${t.ta}</strong></td>
+      <td class="n">${ap?fmt(ap):'—'}</td><td class="n">${wv?fmt(wv):'—'}</td>
+      <td>${t.deals.length}</td>
+      <td><span class="b ba">${t.active.length}</span></td>
+      <td><span class="b bw">${t.won.length}</span></td>
+      <td><span class="b bl">${t.lost.length}</span></td>
+    </tr>`;
+  });
+  html+='</tbody></table></div>';
+  el.innerHTML=html;
+
+  new Chart(document.getElementById('taDonut'),{
+    type:'doughnut',
+    data:{labels:tas.map(t=>t.ta),datasets:[{data:tas.map(t=>t.deals.length),backgroundColor:COLORS,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},padding:8,boxWidth:12}}}}
+  });
+}
+
+// ── RESELLER ──────────────────────────────────────────────────────────────
+function renderReseller(){
+  const el = document.getElementById('sec-reseller');
+  const deals = RESELLER_DEALS;
+  const active = deals.filter(d=>isActive(d.stage));
+  const won = deals.filter(d=>isWon(d.stage));
+  const activePipe = active.reduce((s,d)=>s+(d.amount||0),0);
+  const wonVal = won.reduce((s,d)=>s+(d.amount||0),0);
+
+  let html = `
+  <div class="sec-title">Reseller Pipeline</div>
+  <div class="sec-sub">Deals where Deal Motion = Reseller — companies buying Synthflow minutes and reselling to their own customers. Click cards to drill in.</div>
+  <div class="kpis">
+    <div class="kpi accent" onclick="openModal('Active Reseller Deals', dealTable(RESELLER_DEALS.filter(d=>isActive(d.stage))))">
+      <div class="lbl">Active Pipeline</div><div class="val">${fmt(activePipe)}</div>
+      <div class="sub">${active.length} open deals</div><div class="drill">▸ Click to see deals</div>
+    </div>
+    <div class="kpi" onclick="openModal('Reseller — Closed Won (All Time)', dealTable(RESELLER_DEALS.filter(d=>isWon(d.stage))))">
+      <div class="lbl">Closed Won (All Time)</div><div class="val">${fmt(wonVal)}</div>
+      <div class="sub">${won.length} deals</div><div class="drill" style="color:var(--p)">▸ Click to see deals</div>
+    </div>
+    <div class="kpi" onclick="openModal('All Reseller Deals', dealTable(RESELLER_DEALS))">
+      <div class="lbl">Total Reseller Deals</div><div class="val">${deals.length}</div>
+      <div class="sub">all time</div><div class="drill" style="color:var(--p)">▸ Click to see deals</div>
+    </div>
+    <div class="kpi">
+      <div class="lbl">Win Rate</div><div class="val">${Math.round(won.length/deals.length*100)}%</div>
+      <div class="sub">by deal count</div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card"><h3>Active Deals</h3><div class="dl">`;
+
+  active.sort((a,b)=>(b.amount||0)-(a.amount||0)).forEach(d=>{
+    const c=STAGE_COLOR[stageLabel(d.stage)]||'#a78bfa';
+    html+=`<div class="di"><div class="dot" style="background:${c}"></div><div class="di-name">${d.name}</div><div class="di-meta">${stageBadge(d.stage)}</div><div class="di-amt">${fmt(d.amount,d.cur)}</div></div>`;
+  });
+
+  html+=`</div></div>
+    <div class="card"><h3>Top Won Deals</h3><div class="dl">`;
+  won.sort((a,b)=>(b.amount||0)-(a.amount||0)).slice(0,10).forEach(d=>{
+    html+=`<div class="di"><div class="dot" style="background:#4ade80"></div><div class="di-name">${d.name}</div><div class="di-meta"><span class="b bw">Won</span></div><div class="di-amt">${fmt(d.amount,d.cur)}</div></div>`;
+  });
+  html+=`</div></div></div></div>`;
+  el.innerHTML=html;
+}
+
+// ── PARTNERSHIPS ──────────────────────────────────────────────────────────
+function renderPartnerships(){
+  const el = document.getElementById('sec-partnerships');
+  const deals = PIPE_DEALS;
+  const active = deals.filter(d=>isActive(d.stage));
+  const won = deals.filter(d=>isWon(d.stage));
+  const lost = deals.filter(d=>isLost(d.stage));
+
+  const stageCounts={};
+  deals.forEach(d=>{ const l=stageLabel(d.stage); stageCounts[l]=(stageCounts[l]||0)+1; });
+
+  let html = `
+  <div class="sec-title">Partnerships Pipeline</div>
+  <div class="sec-sub">Partnership development — BPOs, tech partners, channel agents. Click cards to drill in.</div>
+  <div class="kpis">
+    <div class="kpi accent" onclick="openModal('All Active Partnerships', dealTable(PIPE_DEALS.filter(d=>isActive(d.stage))))">
+      <div class="lbl">Total in Pipeline</div><div class="val">${deals.length}</div>
+      <div class="sub">partnership opportunities</div><div class="drill">▸ Click to see all</div>
+    </div>
+    <div class="kpi" onclick="openModal('Active Partnerships', dealTable(PIPE_DEALS.filter(d=>isActive(d.stage))))">
+      <div class="lbl">Active</div><div class="val">${active.length}</div>
+      <div class="sub">in progress</div><div class="drill" style="color:var(--p)">▸ Click to see deals</div>
+    </div>
+    <div class="kpi" onclick="openModal('Partnerships — Closed Won', dealTable(PIPE_DEALS.filter(d=>isWon(d.stage))))">
+      <div class="lbl">Closed Won</div><div class="val">${won.length}</div>
+      <div class="sub">partnerships signed</div><div class="drill" style="color:var(--p)">▸ Click to see deals</div>
+    </div>
+    <div class="kpi" onclick="openModal('Partnerships — Closed Lost', dealTable(PIPE_DEALS.filter(d=>isLost(d.stage))))">
+      <div class="lbl">Closed Lost</div><div class="val">${lost.length}</div>
+      <div class="sub">not pursued</div><div class="drill" style="color:var(--p)">▸ Click to see deals</div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card"><h3>Pipeline Funnel</h3><div style="padding-top:6px">`;
+
+  const stageOrder=['Qualification','Discovery','Evaluation','Negotiation','Contract Sent','Closed Won','Closed Lost'];
+  const maxStage = Math.max(...Object.values(stageCounts),1);
+  stageOrder.forEach(s=>{
+    const n=stageCounts[s]||0;
+    if(!n) return;
+    const pct=n/maxStage*100;
+    const c=STAGE_COLOR[s]||'#cbd5e1';
+    html+=`<div class="bar-r" style="cursor:pointer" onclick="openModal('${s} — Partnerships',dealTable(PIPE_DEALS.filter(d=>stageLabel(d.stage)==='${s}')))">
+      <div class="bar-lbl">${s}</div>
+      <div class="bar-t"><div class="bar-f" style="width:${Math.max(pct,3)}%;background:${c}"></div></div>
+      <div class="bar-v">${n} deal${n>1?'s':''}</div>
+    </div>`;
+  });
+
+  html+=`</div></div>
+    <div class="card"><h3>Stage Distribution</h3><div class="ch"><canvas id="pipeStageChart"></canvas></div></div>
+  </div>`;
+  el.innerHTML=html;
+
+  const se=Object.entries(stageCounts);
+  new Chart(document.getElementById('pipeStageChart'),{
+    type:'doughnut',
+    data:{labels:se.map(e=>e[0]),datasets:[{data:se.map(e=>e[1]),backgroundColor:se.map(e=>STAGE_COLOR[e[0]]||'#cbd5e1'),borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},padding:8,boxWidth:12}}}}
+  });
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────
+function showSec(id,el){
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.nav a').forEach(a=>a.classList.remove('on'));
+  document.getElementById('sec-'+id).classList.add('on');
+  el.classList.add('on');
+}
+
+applyFilter();
+</script>
+</body>
+</html>
